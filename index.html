@@ -3,53 +3,75 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="IA/360 Avanzado — plataforma personal de formación e investigación sobre inteligencia artificial.">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="description" content="IA/360 Avanzado — plataforma privada de formación e investigación.">
   <title>IA/360 Avanzado</title>
   <style>
-    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#10131a;color:#f4f2ea;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{text-align:center;max-width:560px;padding:36px}.spinner{width:46px;height:46px;border:4px solid #303746;border-top-color:#9b8cff;border-radius:50%;margin:0 auto 20px;animation:s .9s linear infinite}@keyframes s{to{transform:rotate(360deg)}}h1{margin:0 0 8px;font-size:clamp(28px,6vw,48px)}p{color:#b7becb}code{background:#1d2230;padding:.1rem .35rem;border-radius:.35rem}
+    :root{color-scheme:dark;--bg:#10131a;--panel:#171c27;--line:#303746;--text:#f4f2ea;--muted:#b7becb;--accent:#9b8cff;--danger:#ff8e8e}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 20% 0,#211c3a 0,transparent 36%),var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(92vw,520px);padding:34px;border:1px solid var(--line);border-radius:22px;background:rgba(23,28,39,.94);box-shadow:0 28px 80px rgba(0,0,0,.42)}h1{margin:0 0 8px;font-size:clamp(30px,7vw,48px)}p{color:var(--muted)}.eyebrow{letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-size:.78rem;font-weight:800}.field{margin:16px 0}.field label{display:block;margin-bottom:6px;font-weight:700}.field input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:#0f131c;color:var(--text);font:inherit}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:#222939;color:var(--text);font:inherit;font-weight:750;cursor:pointer}button.primary{background:var(--accent);color:#111426;border-color:transparent}button:disabled{opacity:.55;cursor:wait}.message{min-height:24px;margin-top:16px;color:var(--muted)}.message.error{color:var(--danger)}.spinner{width:46px;height:46px;border:4px solid var(--line);border-top-color:var(--accent);border-radius:50%;margin:0 auto 20px;animation:s .9s linear infinite}@keyframes s{to{transform:rotate(360deg)}}.center{text-align:center}.privacy{font-size:.88rem;border-top:1px solid var(--line);padding-top:16px;margin-top:22px}
   </style>
 </head>
 <body>
-  <main id="status">
-    <div class="spinner" aria-hidden="true"></div>
-    <h1>IA/360 Avanzado</h1>
-    <p>Cargando la plataforma de estudio…</p>
+  <main id="root">
+    <div class="center"><div class="spinner" aria-hidden="true"></div><h1>IA/360 Avanzado</h1><p>Verificando acceso privado…</p></div>
   </main>
-  <script>
-    (async()=>{
-      if(typeof DecompressionStream==='undefined') throw new Error('Este navegador no permite descomprimir la aplicación. Abrila con una versión actual de Chrome, Edge, Firefox o Safari.');
-      const paths=Array.from({length:5},(_,i)=>`chunks/${i}.txt`);
-      const pieces=await Promise.all(paths.map(async path=>{
-        const response=await fetch(path,{cache:'no-store'});
-        if(!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
-        return response.text();
-      }));
-      const base64=pieces.join('').replace(/\s+/g,'');
-      const compressed=Uint8Array.from(atob(base64),char=>char.charCodeAt(0));
-      const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'));
-      let html=await new Response(stream).text();
-
-      try{
-        const configResponse=await fetch('supabase-config.json',{cache:'no-store'});
-        if(configResponse.ok){
-          const config=await configResponse.json();
-          if(config.url&&config.publishableKey){
-            const storageKey='ia360-advanced';
-            const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
-            current.cloud=current.cloud||{};
-            current.cloud.config={url:String(config.url).replace(/\/$/,''),key:String(config.publishableKey)};
-            localStorage.setItem(storageKey,JSON.stringify(current));
-          }
-        }
-      }catch(error){console.info('IA/360 funciona sin sincronización remota.',error)}
-
-      document.open();
-      document.write(html);
-      document.close();
-    })().catch(error=>{
-      document.getElementById('status').innerHTML=`<h1>No se pudo cargar IA/360</h1><p>${String(error.message||error)}</p><p>Recargá la página. Si continúa, verificá que estén publicados los cinco archivos de <code>chunks/</code>.</p>`;
-      console.error(error);
-    });
-  </script>
+<script>
+(()=>{
+  const STORAGE_KEY='ia360-advanced';
+  const ALLOWED_EMAIL='efacundoyorlano@gmail.com';
+  let config=null;
+  const root=document.getElementById('root');
+  const readState=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch{return {}}};
+  const persist=(session)=>{const s=readState();s.cloud=s.cloud||{};s.cloud.config={url:config.url.replace(/\/$/,''),key:config.publishableKey};s.cloud.session=session||null;localStorage.setItem(STORAGE_KEY,JSON.stringify(s))};
+  const message=(text,error=false)=>{const el=document.getElementById('message');if(el){el.textContent=text||'';el.className='message'+(error?' error':'')}};
+  const setBusy=(busy)=>document.querySelectorAll('button').forEach(b=>b.disabled=busy);
+  async function request(path,options={},session=null){const headers=Object.assign({'apikey':config.publishableKey,'Content-Type':'application/json'},options.headers||{});if(session?.access_token)headers.Authorization='Bearer '+session.access_token;const res=await fetch(config.url.replace(/\/$/,'')+path,Object.assign({},options,{headers}));const txt=await res.text();let data=null;try{data=txt?JSON.parse(txt):null}catch{data=txt}if(!res.ok)throw new Error(data?.msg||data?.message||data?.error_description||data?.error||`HTTP ${res.status}`);return data}
+  async function refresh(session){if(!session?.refresh_token)return null;if(session.expires_at&&Date.now()<session.expires_at*1000-60000)return session;return request('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:session.refresh_token})})}
+  async function validate(session){const user=await request('/auth/v1/user',{},session);if(String(user.email||'').toLowerCase()!==ALLOWED_EMAIL)throw new Error('Esta cuenta no está autorizada para acceder.');session.user=user;persist(session);return session}
+  const decode64=(value)=>Uint8Array.from(atob(value),c=>c.charCodeAt(0));
+  function hasMeaningfulProgress(s){return Boolean(Object.keys(s.doneUnits||{}).length||Object.keys(s.readingStatus||{}).length||Object.keys(s.favorites||{}).length||(s.queue||[]).length||Object.keys(s.unitNotes||{}).length||Object.keys(s.paperNotes||{}).length||Object.keys(s.confidence||{}).length||Object.keys(s.diagnostic||{}).length)}
+  function cleanState(s){const copy=structuredClone(s);delete copy.cloud;return copy}
+  async function syncBeforeLoad(session){
+    const local=readState();
+    const userId=session.user.id;
+    const rows=await request(`/rest/v1/ai_study_progress?user_id=eq.${encodeURIComponent(userId)}&select=state,updated_at&limit=1`,{},session);
+    const localMeaningful=hasMeaningfulProgress(local);
+    if(!Array.isArray(rows)||!rows.length){
+      if(localMeaningful){
+        await request('/rest/v1/ai_study_progress?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:userId,state:cleanState(local),updated_at:new Date().toISOString()})},session);
+      }
+      return;
+    }
+    const remote=rows[0].state||{};
+    const remoteTime=Date.parse(rows[0].updated_at||remote.updatedAt||0)||0;
+    const localTime=Date.parse(local.updatedAt||0)||0;
+    if(!localMeaningful||remoteTime>localTime+1000){
+      const cloud=local.cloud||{};
+      const merged=Object.assign({},remote,{cloud});
+      merged.cloud.config={url:config.url.replace(/\/$/,''),key:config.publishableKey};
+      merged.cloud.session=session;
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(merged));
+    }else if(localTime>remoteTime+1000){
+      await request('/rest/v1/ai_study_progress?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:userId,state:cleanState(local),updated_at:new Date().toISOString()})},session);
+    }
+  }
+  async function loadApp(session){
+    root.innerHTML='<div class="center"><div class="spinner"></div><h1>IA/360 Avanzado</h1><p>Sincronizando tu progreso…</p></div>';
+    await syncBeforeLoad(session);
+    const paths=Array.from({length:5},(_,i)=>`chunks/${i}.txt`);
+    const pieces=await Promise.all(paths.map(async p=>{const r=await fetch(p,{cache:'no-store'});if(!r.ok)throw new Error(`${p}: HTTP ${r.status}`);return r.text()}));
+    const compressed=decode64(pieces.join('').replace(/\s+/g,''));
+    if(typeof DecompressionStream==='undefined')throw new Error('Usá una versión actual de Chrome, Edge, Firefox o Safari.');
+    const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const html=await new Response(stream).text();
+    document.open();document.write(html);document.close();
+  }
+  function showLogin(note=''){root.innerHTML=`<div class="eyebrow">Acceso personal</div><h1>IA/360 Avanzado</h1><p>Ingresá con tu cuenta para abrir el programa y sincronizar el progreso.</p><div class="field"><label>Email</label><input id="email" type="email" autocomplete="username" value="${ALLOWED_EMAIL}"></div><div class="field"><label>Contraseña</label><input id="password" type="password" minlength="8" autocomplete="current-password" placeholder="Mínimo 8 caracteres"></div><div class="actions"><button class="primary" id="login">Ingresar</button><button id="signup">Crear mi cuenta</button></div><div class="message${note?' error':''}" id="message">${note}</div><p class="privacy">El acceso normal está limitado a tu cuenta y el progreso se sincroniza automáticamente. El repositorio de GitHub continúa siendo público mientras usemos GitHub Pages.</p>`;document.getElementById('login').onclick=signIn;document.getElementById('signup').onclick=signUp;document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()})}
+  function credentials(){const email=document.getElementById('email').value.trim().toLowerCase(),password=document.getElementById('password').value;if(email!==ALLOWED_EMAIL)throw new Error('Usá tu email autorizado.');if(password.length<8)throw new Error('La contraseña debe tener al menos 8 caracteres.');return {email,password}}
+  async function signIn(){try{setBusy(true);message('Ingresando…');const session=await request('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify(credentials())});persist(session);await validate(session);await loadApp(session)}catch(e){setBusy(false);message(e.message,true)}}
+  async function signUp(){try{setBusy(true);message('Creando cuenta…');const data=await request('/auth/v1/signup',{method:'POST',body:JSON.stringify(credentials())});const session=data.session||(data.access_token?data:null);if(session){persist(session);await validate(session);await loadApp(session)}else{setBusy(false);message('Cuenta creada. Revisá tu correo, confirmala y después presioná Ingresar.')}}catch(e){setBusy(false);message(e.message,true)}}
+  async function start(){try{const r=await fetch('supabase-config.json',{cache:'no-store'});if(!r.ok)throw new Error('Falta la configuración de sincronización.');config=await r.json();const state=readState();persist(state.cloud?.session||null);let session=state.cloud?.session;if(!session)return showLogin();session=await refresh(session);persist(session);session=await validate(session);await loadApp(session)}catch(e){persist(null);showLogin(e.message)}}
+  start();
+})();
+</script>
 </body>
 </html>
