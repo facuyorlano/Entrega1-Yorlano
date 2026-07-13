@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import gzip
 import shutil
 import traceback
@@ -24,26 +23,19 @@ def main() -> None:
         if source.exists():
             shutil.copy2(source, DIST / name)
 
-    inner_parts: list[str] = []
+    hex_parts: list[str] = []
     for index in range(5):
         path = CHUNKS / f"{index}.txt"
         if not path.exists():
             raise FileNotFoundError(f"Falta {path.relative_to(ROOT)}")
-        outer = "".join(path.read_text(encoding="utf-8").split())
-        decoded = base64.b64decode(outer, validate=True).decode("ascii")
-        print(
-            f"{path.relative_to(ROOT)}: {len(outer):,} caracteres externos; "
-            f"{len(decoded):,} internos",
-            flush=True,
-        )
-        inner_parts.append(decoded)
+        text = "".join(path.read_text(encoding="utf-8").split()).lower()
+        if any(char not in "0123456789abcdef" for char in text):
+            raise ValueError(f"{path.relative_to(ROOT)} contiene caracteres inválidos")
+        print(f"{path.relative_to(ROOT)}: {len(text):,} caracteres hex", flush=True)
+        hex_parts.append(text)
 
-    payload = "".join(inner_parts)
-    print(f"Payload GZIP Base64: {len(payload):,}; inicio={payload[:12]!r}", flush=True)
-    if not payload.startswith("H4sI"):
-        raise ValueError(f"Encabezado Base64 inesperado: {payload[:16]!r}")
-
-    compressed = base64.b64decode(payload, validate=True)
+    compressed = bytes.fromhex("".join(hex_parts))
+    print(f"Paquete GZIP: {len(compressed):,} bytes", flush=True)
     html = gzip.decompress(compressed).decode("utf-8")
 
     if "<html" not in html.lower() or "</html>" not in html.lower():
