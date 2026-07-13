@@ -24,26 +24,23 @@ jobs:
       - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Construir sitio
-        id: build
-        continue-on-error: true
-        run: python build_pages.py
-
-      - name: Guardar diagnóstico
-        if: always() && steps.build.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ia360-build-error
-          path: build_error.txt
-
-      - name: Detener si falló la construcción
-        if: steps.build.outcome == 'failure'
-        run: exit 1
+      - name: Preparar sitio
+        run: |
+          rm -rf dist
+          mkdir dist
+          cp index.html supabase-config.json .nojekyll dist/
+          if [ -f app.html ]; then
+            echo "Usando app.html completo subido al repositorio"
+            cp app.html dist/app.html
+          else
+            echo "app.html todavía no existe; intentando reconstrucción automática"
+            python build_pages.py
+          fi
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Preparar sitio
+      - name: Empaquetar sitio
         uses: actions/upload-pages-artifact@v3
         with:
           path: "dist"
