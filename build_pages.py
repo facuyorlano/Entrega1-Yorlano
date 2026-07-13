@@ -3,14 +3,18 @@ from __future__ import annotations
 import base64
 import gzip
 import shutil
+import traceback
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 CHUNKS = ROOT / "chunks"
+ERROR_FILE = ROOT / "build_error.txt"
 
 
 def main() -> None:
+    if ERROR_FILE.exists():
+        ERROR_FILE.unlink()
     if DIST.exists():
         shutil.rmtree(DIST)
     DIST.mkdir()
@@ -26,15 +30,16 @@ def main() -> None:
         if not path.exists():
             raise FileNotFoundError(f"Falta {path.relative_to(ROOT)}")
         text = path.read_text(encoding="utf-8")
-        print(f"{path.relative_to(ROOT)}: {len(text):,} caracteres")
+        print(f"{path.relative_to(ROOT)}: {len(text):,} caracteres", flush=True)
         parts.append(text)
 
     payload = "".join("".join(parts).split())
+    print(f"Payload Base64: {len(payload):,} caracteres; inicio={payload[:12]!r}", flush=True)
     if not payload.startswith("H4sI"):
         raise ValueError(f"Encabezado Base64 inesperado: {payload[:16]!r}")
 
     compressed = base64.b64decode(payload, validate=True)
-    print(f"Paquete comprimido: {len(compressed):,} bytes")
+    print(f"Paquete comprimido: {len(compressed):,} bytes", flush=True)
     html = gzip.decompress(compressed).decode("utf-8")
 
     if "<html" not in html.lower() or "</html>" not in html.lower():
@@ -62,8 +67,14 @@ def main() -> None:
 
     output = DIST / "app.html"
     output.write_text(html, encoding="utf-8")
-    print(f"Generado {output.relative_to(ROOT)}: {output.stat().st_size:,} bytes")
+    print(f"Generado {output.relative_to(ROOT)}: {output.stat().st_size:,} bytes", flush=True)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        details = traceback.format_exc()
+        ERROR_FILE.write_text(details, encoding="utf-8")
+        print(details, flush=True)
+        raise
