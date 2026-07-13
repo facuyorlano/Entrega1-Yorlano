@@ -4,42 +4,12 @@ import base64
 import gzip
 import shutil
 import traceback
-import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 CHUNKS = ROOT / "chunks"
 ERROR_FILE = ROOT / "build_error.txt"
-
-
-def decompress_gzip_tolerant(data: bytes) -> bytes:
-    try:
-        return gzip.decompress(data)
-    except gzip.BadGzipFile as exc:
-        print(f"Advertencia: {exc}. Se intentará recuperar el flujo DEFLATE.", flush=True)
-
-    if len(data) < 18 or data[:3] != b"\x1f\x8b\x08":
-        raise ValueError("El paquete no contiene un encabezado GZIP compatible")
-
-    flags = data[3]
-    pos = 10
-    if flags & 0x04:
-        xlen = int.from_bytes(data[pos:pos + 2], "little")
-        pos += 2 + xlen
-    if flags & 0x08:
-        pos = data.index(b"\0", pos) + 1
-    if flags & 0x10:
-        pos = data.index(b"\0", pos) + 1
-    if flags & 0x02:
-        pos += 2
-
-    if pos >= len(data) - 8:
-        raise ValueError("El paquete GZIP está incompleto")
-
-    recovered = zlib.decompress(data[pos:-8], -zlib.MAX_WBITS)
-    print(f"Flujo recuperado ignorando el tráiler CRC: {len(recovered):,} bytes", flush=True)
-    return recovered
 
 
 def main() -> None:
@@ -54,27 +24,32 @@ def main() -> None:
         if source.exists():
             shutil.copy2(source, DIST / name)
 
-    parts: list[str] = []
+    inner_parts: list[str] = []
     for index in range(5):
         path = CHUNKS / f"{index}.txt"
         if not path.exists():
             raise FileNotFoundError(f"Falta {path.relative_to(ROOT)}")
-        text = path.read_text(encoding="utf-8")
-        print(f"{path.relative_to(ROOT)}: {len(text):,} caracteres", flush=True)
-        parts.append(text)
+        outer = "".join(path.read_text(encoding="utf-8").split())
+        decoded = base64.b64decode(outer, validate=True).decode("ascii")
+        print(
+            f"{path.relative_to(ROOT)}: {len(outer):,} caracteres externos; "
+            f"{len(decoded):,} internos",
+            flush=True,
+        )
+        inner_parts.append(decoded)
 
-    payload = "".join("".join(parts).split())
-    print(f"Payload Base64: {len(payload):,} caracteres; inicio={payload[:12]!r}", flush=True)
+    payload = "".join(inner_parts)
+    print(f"Payload GZIP Base64: {len(payload):,}; inicio={payload[:12]!r}", flush=True)
     if not payload.startswith("H4sI"):
         raise ValueError(f"Encabezado Base64 inesperado: {payload[:16]!r}")
 
     compressed = base64.b64decode(payload, validate=True)
-    print(f"Paquete comprimido: {len(compressed):,} bytes", flush=True)
-    html_bytes = decompress_gzip_tolerant(compressed)
-    html = html_bytes.decode("utf-8")
+    html = gzip.decompress(compressed).decode("utf-8")
 
     if "<html" not in html.lower() or "</html>" not in html.lower():
         raise ValueError("El contenido reconstruido no es un HTML completo")
+    if "const RESOURCES=" not in html or "const UNITS=" not in html:
+        raise ValueError("El HTML no contiene el programa dinámico completo")
 
     gate = r'''<script>
 (() => {
@@ -92,9 +67,12 @@ def main() -> None:
 })();
 </script>'''
 
-    if "<head>" not in html:
+    lower = html.lower()
+    head_index = lower.find("<head>")
+    if head_index < 0:
         raise ValueError("No se encontró la etiqueta <head>")
-    html = html.replace("<head>", "<head>\n" + gate, 1)
+    insert_at = head_index + len("<head>")
+    html = html[:insert_at] + "\n" + gate + html[insert_at:]
 
     output = DIST / "app.html"
     output.write_text(html, encoding="utf-8")
