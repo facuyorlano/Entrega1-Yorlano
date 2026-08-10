@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Quasar 7319</title>
+  <style>
+    html,body{margin:0;min-height:100%;background:#f3f5f2;color:#18231f;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    body{min-height:100vh;display:grid;place-items:center}
+    #boot{padding:24px;text-align:center}
+    #boot.err{max-width:680px;color:#8b2e2e;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <div id="boot">Cargando Quasar…</div>
+  <script>
+  (async()=>{
+    const STATIC='https://quasar-ceniza-7319.vercel.app';
+    const OLD='https://pqtokuriwkslgzrhrqng.supabase.co/functions/v1/qz-c7319-vault-d916';
+    const API='https://yohbgqgscbpbbfeqivts.supabase.co/functions/v1/quasar-c7319';
+    try{
+      const response=await fetch(STATIC+'/?quasar-recovery='+Date.now(),{cache:'no-store'});
+      if(!response.ok)throw new Error('Vercel respondió '+response.status);
+      let html=await response.text();
+      const close='</scr'+'ipt>';
+      const open='<scr'+'ipt>';
+      const appTag='<scr'+'ipt src="app.js" defer>'+close;
+      const shim=open+
+        'window.__qzOriginalFetch=window.fetch.bind(window);'+
+        'window.fetch=function(input,init){try{'+
+          'if(typeof input==="string"&&input.indexOf("'+OLD+'")===0){input=input.replace("'+OLD+'","'+API+'");}'+
+          'else if(input instanceof Request&&input.url.indexOf("'+OLD+'")===0){input=new Request(input.url.replace("'+OLD+'","'+API+'"),input);}'+
+        '}catch(e){console.error(e)}return window.__qzOriginalFetch(input,init)};'+close;
+      html=html.replace('<head>','<head><base href="'+STATIC+'/">');
+      html=html.replace(appTag,shim+appTag);
+      document.open();
+      document.write(html);
+      document.close();
+    }catch(error){
+      const boot=document.getElementById('boot');
+      boot.className='err';
+      boot.textContent='No se pudo cargar Quasar. '+(error&&error.message?error.message:String(error));
+      console.error(error);
+    }
+  })();
+  </script>
+</body>
+</html>
